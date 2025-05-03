@@ -13,7 +13,7 @@ def load_runner_configs():
         for entry in runners:
             entry["count"] = int(entry.get("count", 1))
             entry["labels"] = entry.get("labels", "").split(",") if isinstance(entry.get("labels", ""), str) else entry.get("labels", [])
-            entry["token"] = entry.get("token") or os.getenv("GITHUB_PAT")
+            entry["token"] = entry.get("token") or os.getenv("DEFAULT_RUNNER_TOKEN") or os.getenv("GITHUB_PAT")
             entry["image"] = entry.get("image", os.getenv("RUNNER_IMAGE", "dublok/gh-runner:latest"))
         return runners
     else:

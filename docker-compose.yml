@@ -5,11 +5,29 @@ services:
     build: src
     image: gh-runner-maestro:latest
     privileged: true
+    # Set DEFAULT_RUNNER_TOKEN for global token control:
+    #   Any runner entry in RUNNERS_MATRIX without its own "token" will use this value.
+    #   This allows for both granular (per-runner) and global token control.
+    #   Precedence: per-runner "token" > DEFAULT_RUNNER_TOKEN > GITHUB_PAT (legacy).
+    #   Example (uncomment and set as needed):
+    #   - DEFAULT_RUNNER_TOKEN=YOUR_COMMON_GITHUB_TOKEN
+
     environment:
-      - RUNNERS_MATRIX=[
-          {"url":"https://github.com/ErcinDedeoglu/packmate","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_1","image":"dublok/gh-runner:latest"},
-          {"url":"https://github.com/ErcinDedeoglu/github-starboard","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_2","image":"dublok/gh-runner:latest"}
-        ]
+      # - DEFAULT_RUNNER_TOKEN=YOUR_COMMON_GITHUB_TOKEN
+      # Examples below show both repository-level and organization-level runner configurations.
+      # The "image" key is optional: if omitted, dublok/gh-runner:latest will be used by default.
+      # RUNNERS_MATRIX parameters:
+            #   url:   The GitHub repository or organization URL. Example: "https://github.com/your-org/your-repo1" or "https://github.com/your-org"
+            #   count: Number of runner containers to launch for this url. Must be a positive integer.
+            #   labels: Comma-separated labels to assign for each runner (for GitHub Actions matrix jobs, self-hosted targeting, etc).
+            #   token: Personal Access Token (PAT) with repository/organization registration permissions.
+            #   image: Docker image (optionally with tag) for the runner container. Optional; if omitted, defaults to "dublok/gh-runner:latest".
+      - RUNNERS_MATRIX: |
+          [
+            {"url":"https://github.com/your-org/your-repo1","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_1","image":"dublok/gh-runner:v1"},
+            {"url":"https://github.com/your-org/your-repo2","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_2","image":"dublok/gh-runner:v1.0.11"},
+            {"url":"https://github.com/your-org","count":2,"labels":"org-scope","token":"YOUR_ORG_LEVEL_GITHUB_TOKEN"}
+          ]
     # volumes:
     #   - /var/run/docker.sock:/var/run/docker.sock   # <-- REMOVE THIS LINE for full DIND isolation
     restart: unless-stopped
@@ -21,4 +39,8 @@ networks:
 # 
 # This is a template. Replace YOUR_GITHUB_TOKEN_1 and YOUR_GITHUB_TOKEN_2 with actual GitHub personal access tokens for your targets.
 # DO NOT commit your real credentials to source control!
+#
+# Alternatively, set DEFAULT_RUNNER_TOKEN in the environment list above.
+# Any runner in RUNNERS_MATRIX without a "token" will automatically use DEFAULT_RUNNER_TOKEN if present.
+# This provides centralized token management while allowing for per-runner overrides when extra control is needed.
 #
