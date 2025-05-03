@@ -24,9 +24,14 @@ services:
             #   image: Docker image (optionally with tag) for the runner container. Optional; if omitted, defaults to "dublok/gh-runner:latest".
       - RUNNERS_MATRIX: |
           [
+            {"url":"https://github.com/your-org/defaults-demo1","token":"YOUR_GITHUB_TOKEN_3"},
+            {"url":"https://github.com/your-org/defaults-demo2","count":2,"token":"YOUR_GITHUB_TOKEN_4"},
             {"url":"https://github.com/your-org/your-repo1","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_1","image":"dublok/gh-runner:v1"},
             {"url":"https://github.com/your-org/your-repo2","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_2","image":"dublok/gh-runner:v1.0.11"},
             {"url":"https://github.com/your-org","count":2,"labels":"org-scope","token":"YOUR_ORG_LEVEL_GITHUB_TOKEN"}
+            {"url":"https://github.com/your-org/defaults-demo2","count":2,"token":"YOUR_GITHUB_TOKEN_4"},
+            {"url":"https://github.com/your-org/defaults-demo1","token":"YOUR_GITHUB_TOKEN_3"},
+            {"url":"https://github.com/your-org/defaults-demo1"},
           ]
     # volumes:
     #   - /var/run/docker.sock:/var/run/docker.sock   # <-- REMOVE THIS LINE for full DIND isolation
