@@ -50,13 +50,18 @@ class MaestroService:
             if needed <= 0:
                 print(f"[{url}] No additional runners needed.")
                 continue
-            for i in range(current_count, desired_count):
-                container = mgr.start_runner(index=i+1, labels=labels)
+            import threading
+            def launch_one(index):
+                container = mgr.start_runner(index=index+1, labels=labels)
                 print(f"[{url}] Launched runner container: {container.name}")
-                # Add buffer between launches for the same repo/org
-                if i < desired_count - 1:
-                    print(f"[{url}] Waiting {self.runner_launch_buffer} seconds before next runner launch...")
-                    time.sleep(self.runner_launch_buffer)
+
+            threads = []
+            for i in range(current_count, desired_count):
+                t = threading.Thread(target=launch_one, args=(i,))
+                t.start()
+                threads.append(t)
+            for t in threads:
+                t.join()
 
     def monitor_runners(self):
         for entry in self.runner_managers:
