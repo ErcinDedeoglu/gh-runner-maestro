@@ -2,7 +2,7 @@
 set -e
 
 # Start Docker daemon in background
-dockerd &
+dockerd > /proc/1/fd/1 2>&1 &
 
 # Wait for Docker daemon to be ready
 while ! docker info >/dev/null 2>&1; do
