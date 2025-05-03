@@ -14,7 +14,7 @@ def load_runner_configs():
             entry["count"] = int(entry.get("count", 1))
             entry["labels"] = entry.get("labels", "").split(",") if isinstance(entry.get("labels", ""), str) else entry.get("labels", [])
             entry["token"] = entry.get("token") or os.getenv("GITHUB_PAT")
-            entry["image"] = entry.get("image", os.getenv("RUNNER_IMAGE", "ercindedeoglu/gh-runner:latest"))
+            entry["image"] = entry.get("image", os.getenv("RUNNER_IMAGE", "dublok/gh-runner:latest"))
         return runners
     else:
         # Single runner setup (legacy env)
@@ -23,5 +23,5 @@ def load_runner_configs():
             "count": int(os.getenv("RUNNER_COUNT", 1)),
             "labels": os.getenv("RUNNER_LABELS", "").split(",") if os.getenv("RUNNER_LABELS") else [],
             "token": os.getenv("GITHUB_PAT"),
-            "image": os.getenv("RUNNER_IMAGE", "ercindedeoglu/gh-runner:latest")
+            "image": os.getenv("RUNNER_IMAGE", "dublok/gh-runner:latest")
         }]

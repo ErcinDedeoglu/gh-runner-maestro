@@ -2,17 +2,23 @@ version: "3.8"
 
 services:
   gh-runner-maestro:
-    image: dublok/gh-runner-maestro:latest
+    build: src
+    image: gh-runner-maestro:latest
     privileged: true
     environment:
       - RUNNERS_MATRIX=[
-          {"url":"https://github.com/org1/repo1","count":2,"labels":"dind,ubuntu-latest","token":"${GITHUB_PAT_REPO1}"},
-          {"url":"https://github.com/org2/repo2","count":1,"labels":"docker","token":"${GITHUB_PAT_REPO2}"}
+          {"url":"https://github.com/ErcinDedeoglu/packmate","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_1","image":"dublok/gh-runner:latest"},
+          {"url":"https://github.com/ErcinDedeoglu/github-starboard","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_2","image":"dublok/gh-runner:latest"}
         ]
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock   # <-- REMOVE THIS LINE for full DIND isolation
     restart: unless-stopped
 
 networks:
   default:
     driver: bridge
+
+# 
+# This is a template. Replace YOUR_GITHUB_TOKEN_1 and YOUR_GITHUB_TOKEN_2 with actual GitHub personal access tokens for your targets.
+# DO NOT commit your real credentials to source control!
+#

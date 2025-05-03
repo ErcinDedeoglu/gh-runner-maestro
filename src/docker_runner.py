@@ -3,7 +3,7 @@ import os
 import random
 import string
 
-def random_suffix(length=6):
+def random_suffix(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 class RunnerManager:
@@ -14,8 +14,11 @@ class RunnerManager:
         self.github_pat = github_pat
 
     def start_runner(self, index, labels=None, extra_env=None):
-        """Start a single runner container"""
-        runner_name = f"gh-runner-{index}-{random_suffix(4)}"
+        """Start a single runner container fully DinD-isolated. Makes name globally unique."""
+        # Always pull the runner image before starting to ensure the latest version is used
+        self.docker_client.images.pull(self.runner_image)
+
+        runner_name = f"gh-runner-{index}-{random_suffix(8)}"
         env = {
             "GITHUB_PAT": self.github_pat,
             "RUNNER_URL": self.runner_url,
@@ -26,25 +29,34 @@ class RunnerManager:
         if extra_env:
             env.update(extra_env)
 
-        print(f"Launching runner container: {runner_name}")
+        print(f"[Orchestrator] Launching runner container: {runner_name} for {self.runner_url}")
+        print(f"  Env: {env}")
 
         container = self.docker_client.containers.run(
             self.runner_image,
             detach=True,
             environment=env,
             name=runner_name,
-            auto_remove=True,
+            labels={"maestro.target_url": self.runner_url},
+            auto_remove=False,  # For debugging, let us inspect stopped containers
             privileged=True,
             network_mode="bridge"
         )
+        print(f"[Orchestrator] Launched: {container.name} id={container.short_id} status={container.status}")
         return container
 
     def list_runner_containers(self):
         """Return containers started by this manager."""
         containers = self.docker_client.containers.list(
             all=True,
-            filters={"ancestor": self.runner_image, "status": "running"}
+            filters={
+                "ancestor": self.runner_image,
+                "label": f"maestro.target_url={self.runner_url}"
+            }
         )
+        print(f"[Orchestrator] All containers for {self.runner_url}:")
+        for c in containers:
+            print(f"   {c.name}: status={c.status}, id={c.short_id}, exit={getattr(c, 'exitcode', None)}")
         res = []
         for c in containers:
             if c.name.startswith("gh-runner-"):
