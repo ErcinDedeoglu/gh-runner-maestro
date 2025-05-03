@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  gh-runner-maestro:
+    image: dublok/gh-runner-maestro:latest
+    privileged: true
+    environment:
+      - RUNNERS_MATRIX=[
+          {"url":"https://github.com/org1/repo1","count":2,"labels":"dind,ubuntu-latest","token":"${GITHUB_PAT_REPO1}"},
+          {"url":"https://github.com/org2/repo2","count":1,"labels":"docker","token":"${GITHUB_PAT_REPO2}"}
+        ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
