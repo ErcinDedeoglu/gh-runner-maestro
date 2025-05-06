@@ -398,7 +398,7 @@ ncurses-bin                                                                   6.
 netbase                                                                       6.4                                    deb                          
 openssl                                                                       3.0.13-0ubuntu3.5                      deb                          
 passwd                                                                        1:4.13+dfsg1-4ubuntu3.2                deb                          
-perl-base                                                                     5.38.2-3.2build2.1                     deb                          
+perl-base                                                                     5.38.2-3.2ubuntu0.1                    deb                          
 pip                                                                           24.0                                   python                       
 procps                                                                        2:4.0.4-4ubuntu3.2                     deb                          
 python3                                                                       3.12.3-0ubuntu2                        deb                          
