@@ -15,47 +15,34 @@
 - Requires the Docker socket to be mounted (`-v /var/run/docker.sock:/var/run/docker.sock`)
 - GitHub Personal Access Tokens for each repo or org as needed
 
-## Cgroup Namespace Configuration
+## Docker-in-Docker Support
 
-For optimal Docker-in-Docker functionality, it's recommended to use the `--cgroupns=host` flag when running the maestro container. This allows proper resource management and eliminates cgroup-related errors.
+This container supports both Docker socket mounting and true Docker-in-Docker (DIND) modes:
 
-### With `--cgroupns=host` (Recommended)
-
+### Docker Socket Mode (Recommended)
+Mount the host Docker socket for better performance:
 ```bash
 docker run -d --name gh-runner-maestro \
   --privileged \
-  --cgroupns=host \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   -e RUNNERS_MATRIX='[...]' \
   gh-runner-maestro:latest
 ```
 
-**Benefits:**
-- ✅ Proper cgroup v2 resource management
+### True Docker-in-Docker Mode
+Run without mounting the Docker socket for complete isolation:
+```bash
+docker run -d --name gh-runner-maestro \
+  --privileged \
+  -e RUNNERS_MATRIX='[...]' \
+  gh-runner-maestro:latest
+```
+
+**Features:**
+- ✅ Automatic cgroup v1 configuration for compatibility
 - ✅ Clean logs without cgroup errors
-- ✅ Accurate container resource monitoring
-- ✅ CPU, memory, and I/O limits work correctly
-
-### Without `--cgroupns=host`
-
-If you cannot use `--cgroupns=host` due to security policies, the application will still function but with limitations:
-
-**Issues you may encounter:**
-- ❌ Cgroup controller errors in logs:
-  ```
-  level=error msg="failed to enable controllers ([cpuset cpu io memory hugetlb pids rdma misc])"
-  ```
-- ❌ Memory monitoring warnings:
-  ```
-  level=warning msg="error from *cgroupsv2.Manager.EventChan"
-  ```
-- ❌ Impaired resource management for nested containers
-- ❌ Log pollution making debugging harder
-
-**Impact:** The GitHub runner containers will still launch and function, but resource limits may not be enforced properly and container monitoring will be impaired.
-
-### Security Considerations
-
-Using `--cgroupns=host` gives the container access to the host's cgroup namespace. Since the container already runs with `--privileged` for Docker-in-Docker functionality, this doesn't significantly increase the security risk. The cgroup access is necessary for proper resource management in nested container scenarios.
+- ✅ Proper resource management in both modes
+- ✅ No additional configuration required
 
 ---
 

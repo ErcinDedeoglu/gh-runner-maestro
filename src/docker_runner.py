@@ -50,6 +50,22 @@ class RunnerManager:
             if extra_env:
                 env.update(extra_env)
             
+            # Adaptive volume configuration - detect deployment mode
+            volumes = {}
+            deployment_mode = "unknown"
+            
+            # Check if Docker socket is available on the host
+            if os.path.exists('/var/run/docker.sock'):
+                # Docker socket mode - share the host Docker daemon
+                volumes['/var/run/docker.sock'] = {'bind': '/var/run/docker.sock', 'mode': 'rw'}
+                deployment_mode = "docker-socket"
+                logger.info(f"Using Docker socket mode for container {runner_name}")
+            else:
+                # True DIND mode - mount cgroup for internal Docker daemon
+                volumes['/sys/fs/cgroup'] = {'bind': '/sys/fs/cgroup', 'mode': 'rw'}
+                deployment_mode = "docker-in-docker"
+                logger.info(f"Using Docker-in-Docker mode for container {runner_name}")
+            
             # Security-focused container configuration
             container_config = {
                 "image": self.runner_image,
@@ -59,14 +75,13 @@ class RunnerManager:
                 "labels": {
                     "maestro.target_url": self.runner_url,
                     "maestro.managed": "true",
-                    "maestro.created": str(int(time.time()))
+                    "maestro.created": str(int(time.time())),
+                    "maestro.deployment_mode": deployment_mode
                 },
                 "auto_remove": False,
-                "privileged": True,  # Required for DIND
+                "privileged": True,  # Required for Docker access
                 "network_mode": "bridge",
-                "volumes": {
-                    "/sys/fs/cgroup": {"bind": "/sys/fs/cgroup", "mode": "ro"}
-                }
+                "volumes": volumes
             }
             
             logger.info(f"Launching runner container: {runner_name} for {self.runner_url}")

@@ -5,9 +5,6 @@ services:
     build: src
     image: gh-runner-maestro:latest
     privileged: true
-    # Recommended: Use host cgroup namespace for proper Docker-in-Docker resource management
-    # This eliminates cgroup controller errors and enables proper container monitoring
-    cgroupns_mode: host
     # Set DEFAULT_RUNNER_TOKEN for global token control:
     #   Any runner entry in RUNNERS_MATRIX without its own "token" will use this value.
     #   This allows for both granular (per-runner) and global token control.
