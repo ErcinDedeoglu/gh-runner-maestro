@@ -63,11 +63,7 @@ class RunnerManager:
                 },
                 "auto_remove": False,
                 "privileged": True,  # Required for DIND
-                "network_mode": "bridge",
-                "restart_policy": {"Name": "on-failure", "MaximumRetryCount": 3},
-                "mem_limit": "2g",  # Memory limit for runner containers
-                "cpu_quota": 100000,  # CPU limit (100% of one core)
-                "cpu_shares": 512,   # CPU priority
+                "network_mode": "bridge"
             }
             
             logger.info(f"Launching runner container: {runner_name} for {self.runner_url}")

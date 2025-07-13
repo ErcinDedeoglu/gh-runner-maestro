@@ -25,12 +25,13 @@ trap cleanup SIGTERM SIGINT
 
 # Check if we're running as root (needed for Docker socket access)
 # Ensure we are running as root
-if [ "$(id -u)" != "0" ]; then
-   echo "This script must be run as root" 1>&2
-   exit 1
+if [ -z "${DOCKER_HOST:-}" ] && [ ! -S "/var/run/docker.sock" ]; then
+    echo "Docker socket not found, starting internal Docker daemon..."
+    # Use cgroupfs cgroup driver and vfs storage driver for DIND
+    dockerd --host=unix:///var/run/docker.sock --storage-driver=vfs --exec-opt native.cgroupdriver=cgroupfs > /proc/1/fd/1 2>&1 &
 fi
 
-# Check if Docker is available via host socket
+# Check if Docker is available
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking Docker socket availability..."
 MAX_RETRIES=10
 RETRY_COUNT=0
