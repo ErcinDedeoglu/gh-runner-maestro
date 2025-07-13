@@ -34,7 +34,7 @@ RUN mkdir -p /src /var/log/gh-runner-maestro && \
     usermod -aG docker maestro
 
 # Copy application code
-COPY src/ /src/
+COPY . /src
 
 WORKDIR /src
 
