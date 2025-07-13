@@ -118,6 +118,16 @@ Alternatively, the original method is still supported with direct environment va
 
 On startup, maestro reads the `RUNNERS_MATRIX` JSON env var (via docker-compose), and dynamically manages all requested runners. If the matrix is not specified, it looks for the legacy direct environment variable set for a single runner.
 
+### Automatic Image Updates
+
+**Important:** The system automatically pulls the latest version of the runner image before starting each container. This ensures that:
+
+- ✅ Security updates are automatically applied
+- ✅ Latest features and bug fixes are used
+- ✅ No manual image management required
+
+When a runner container is started, the system executes `docker pull <runner-image>` to fetch the most recent version. This applies to both the default `dublok/gh-runner:latest` image and any custom images specified in the `RUNNERS_MATRIX` configuration.
+
 ---
 
 ## Building the Maestro Container
