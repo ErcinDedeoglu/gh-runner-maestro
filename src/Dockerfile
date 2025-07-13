@@ -34,12 +34,12 @@ RUN mkdir -p /src /var/log/gh-runner-maestro && \
     usermod -aG docker maestro
 
 # Copy application code
-COPY . .
-
 WORKDIR /src
 
+COPY . .
+
 # Make entrypoint executable
-RUN chmod +x /src/entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -50,4 +50,4 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gosu && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["/src/entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]
