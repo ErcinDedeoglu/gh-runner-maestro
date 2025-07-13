@@ -63,7 +63,10 @@ class RunnerManager:
                 },
                 "auto_remove": False,
                 "privileged": True,  # Required for DIND
-                "network_mode": "bridge"
+                "network_mode": "bridge",
+                "volumes": {
+                    "/sys/fs/cgroup": {"bind": "/sys/fs/cgroup", "mode": "ro"}
+                }
             }
             
             logger.info(f"Launching runner container: {runner_name} for {self.runner_url}")

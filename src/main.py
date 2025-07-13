@@ -5,7 +5,7 @@ import signal
 import sys
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from docker_runner import RunnerManager
 from config import load_runner_configs
 
@@ -92,7 +92,7 @@ class MaestroService:
                 "docker_connected": True,
                 "total_containers": total_containers,
                 "healthy_containers": healthy_containers,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
         except Exception as e:
@@ -100,7 +100,7 @@ class MaestroService:
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
     def launch_runners(self):
