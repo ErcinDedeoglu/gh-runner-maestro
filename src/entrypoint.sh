@@ -12,11 +12,25 @@ mkdir -p /var/log/gh-runner-maestro
 chmod 755 /var/log/gh-runner-maestro
 
 # Function to cleanup on exit
+# Store PIDs of background processes
+DOCKER_PID=""
+PYTHON_PID=""
+
 cleanup() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Received shutdown signal, cleaning up..."
-    pkill -TERM -f "python3.*main.py" || true
-    sleep 2
-    pkill -KILL -f "python3.*main.py" || true
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Received shutdown signal, propagating to children..."
+    
+    # Propagate signal to child processes
+    if [ -n "$PYTHON_PID" ]; then
+        kill -TERM "$PYTHON_PID"
+    fi
+    if [ -n "$DOCKER_PID" ]; then
+        kill -TERM "$DOCKER_PID"
+    fi
+    
+    # Wait for all background processes to finish
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for processes to terminate..."
+    wait
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cleanup finished."
     exit 0
 }
 
@@ -29,6 +43,7 @@ if [ -z "${DOCKER_HOST:-}" ] && [ ! -S "/var/run/docker.sock" ]; then
     echo "Docker socket not found, starting internal Docker daemon..."
     # Use cgroupfs cgroup driver and vfs storage driver for DIND
     dockerd --host=unix:///var/run/docker.sock --storage-driver=vfs --exec-opt native.cgroupdriver=cgroupfs > /proc/1/fd/1 2>&1 &
+    DOCKER_PID=$!
 fi
 
 # Check if Docker is available
@@ -67,4 +82,10 @@ if ! health_check; then
 fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting maestro orchestration..."
-exec /venv/bin/python3 -u main.py
+/venv/bin/python3 -u main.py &
+PYTHON_PID=$!
+
+# Wait for all background processes.
+# The 'wait' command will return if any of the background processes exit.
+# The trap will handle the cleanup on SIGTERM/SIGINT.
+wait
