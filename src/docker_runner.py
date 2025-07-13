@@ -59,6 +59,9 @@ class RunnerManager:
                 # Docker socket mode - share the host Docker daemon
                 volumes['/var/run/docker.sock'] = {'bind': '/var/run/docker.sock', 'mode': 'rw'}
                 deployment_mode = "docker-socket"
+                # Tell the runner image to skip starting its own Docker daemon
+                env["DOCKER_HOST"] = "unix:///var/run/docker.sock"
+                env["SKIP_DOCKER_DAEMON"] = "true"
                 logger.info(f"Using Docker socket mode for container {runner_name}")
             else:
                 # True DIND mode - mount cgroup for internal Docker daemon
