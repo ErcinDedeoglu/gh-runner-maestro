@@ -41,8 +41,29 @@ trap cleanup SIGTERM SIGINT
 # Ensure we are running as root
 if [ -z "${DOCKER_HOST:-}" ] && [ ! -S "/var/run/docker.sock" ]; then
     echo "Docker socket not found, starting internal Docker daemon..."
-    # Use cgroupfs cgroup driver and vfs storage driver for DIND
-    dockerd --host=unix:///var/run/docker.sock --storage-driver=vfs --exec-opt native.cgroupdriver=cgroupfs > /proc/1/fd/1 2>&1 &
+    
+    # Create Docker configuration directory
+    mkdir -p /etc/docker
+    
+    # Create daemon.json with proper cgroup and storage configuration for DIND
+    cat > /etc/docker/daemon.json << EOF
+{
+    "storage-driver": "vfs",
+    "exec-opts": ["native.cgroupdriver=cgroupfs"],
+    "cgroup-parent": "",
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "10m",
+        "max-file": "3"
+    },
+    "features": {
+        "buildkit": false
+    }
+}
+EOF
+    
+    # Start Docker daemon with explicit configuration
+    dockerd --config-file=/etc/docker/daemon.json --host=unix:///var/run/docker.sock > /proc/1/fd/1 2>&1 &
     DOCKER_PID=$!
 fi
 
