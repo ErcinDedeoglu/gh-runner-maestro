@@ -25,8 +25,8 @@ RUN apt-get update && \
 # Create virtual environment and install Python dependencies
 RUN python3 -m venv /venv
 RUN /venv/bin/pip install --no-cache-dir pip setuptools wheel
-COPY src/requirements.txt /src/requirements.txt
-RUN /venv/bin/pip install --no-cache-dir -r /src/requirements.txt
+COPY requirements.txt /requirements.txt
+RUN /venv/bin/pip install --no-cache-dir -r /requirements.txt
 
 # Create directories and set permissions
 RUN mkdir -p /src /var/log/gh-runner-maestro && \
@@ -34,7 +34,7 @@ RUN mkdir -p /src /var/log/gh-runner-maestro && \
     usermod -aG docker maestro
 
 # Copy application code
-COPY . /src
+COPY . .
 
 WORKDIR /src
 
