@@ -51,6 +51,7 @@ if [ -z "${DOCKER_HOST:-}" ] && [ ! -S "/var/run/docker.sock" ]; then
     "storage-driver": "vfs",
     "exec-opts": ["native.cgroupdriver=cgroupfs"],
     "cgroup-parent": "",
+    "default-cgroupns-mode": "host",
     "log-driver": "json-file",
     "log-opts": {
         "max-size": "10m",
@@ -58,12 +59,17 @@ if [ -z "${DOCKER_HOST:-}" ] && [ ! -S "/var/run/docker.sock" ]; then
     },
     "features": {
         "buildkit": false
-    }
+    },
+    "experimental": false,
+    "live-restore": false
 }
 EOF
     
-    # Start Docker daemon with explicit configuration
-    dockerd --config-file=/etc/docker/daemon.json --host=unix:///var/run/docker.sock > /proc/1/fd/1 2>&1 &
+    # Start Docker daemon with configuration from daemon.json to avoid cgroup v2 issues
+    dockerd \
+        --config-file=/etc/docker/daemon.json \
+        --host=unix:///var/run/docker.sock \
+        > /proc/1/fd/1 2>&1 &
     DOCKER_PID=$!
 fi
 
