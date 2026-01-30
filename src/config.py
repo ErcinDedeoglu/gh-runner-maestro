@@ -70,7 +70,7 @@ def validate_runner_config(config: Dict[str, Any]) -> Dict[str, Any]:
         errors.append("Invalid runner image specified")
     config["image"] = image
 
-    ephemeral = config.get("ephemeral", False)
+    ephemeral = config.get("ephemeral", True)
     if isinstance(ephemeral, str):
         ephemeral = ephemeral.lower() in ("true", "1", "yes")
     config["ephemeral"] = bool(ephemeral)
