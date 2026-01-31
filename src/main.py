@@ -64,7 +64,7 @@ class MaestroService:
             entry["manager"] = mgr
             self.runner_managers.append(entry)
             ephemeral_mode = (
-                "ephemeral" if entry.get("ephemeral", False) else "persistent"
+                "ephemeral" if entry.get("ephemeral", True) else "persistent"
             )
             logger.info(
                 f"Configured: {entry['count']} runners for {entry['url']} [labels={entry['labels']}, mode={ephemeral_mode}]"
@@ -91,7 +91,7 @@ class MaestroService:
                 total_containers += len(containers)
 
                 for container in containers:
-                    if container.status == "running":
+                    if container.get("status") == "running":
                         healthy_containers += 1
 
             return {
@@ -122,10 +122,12 @@ class MaestroService:
             labels = entry.get("labels", [])
 
             try:
-                running_containers = [
-                    c for c in mgr.list_runner_containers() if c.status == "running"
+                running_processes = [
+                    c
+                    for c in mgr.list_runner_containers()
+                    if c.get("status") == "running"
                 ]
-                current_count = len(running_containers)
+                current_count = len(running_processes)
 
                 logger.info(
                     f"[{url}] Currently running: {current_count} / Target: {desired_count}"
@@ -133,43 +135,11 @@ class MaestroService:
 
                 needed = desired_count - current_count
 
-                # Scale down if we have too many runners
                 if needed < 0:
-                    excess = -needed
                     logger.info(
-                        f"[{url}] Scaling down: removing {excess} excess runner(s)"
+                        f"[{url}] Excess of {abs(needed)} runners scheduled, "
+                        f"but not scaling down since isolated ephemeral runners will terminate automatically"
                     )
-
-                    # Sort by creation time (oldest first) to remove oldest runners
-                    sorted_containers = sorted(
-                        running_containers,
-                        key=lambda c: c.labels.get("maestro.created", "0"),
-                        reverse=False,
-                    )
-
-                    removed = 0
-                    for container in sorted_containers[:excess]:
-                        if self._shutdown:
-                            break
-                        try:
-                            logger.info(
-                                f"[{url}] Stopping excess runner: {container.name}"
-                            )
-                            container.stop(timeout=30)
-                            container.remove(force=True)
-                            logger.info(
-                                f"[{url}] Removed excess runner: {container.name}"
-                            )
-                            removed += 1
-                        except Exception as e:
-                            logger.error(
-                                f"[{url}] Failed to remove runner {container.name}: {e}"
-                            )
-
-                    if removed > 0:
-                        logger.info(
-                            f"[{url}] Successfully removed {removed} excess runner(s)"
-                        )
                     continue
 
                 if needed == 0:
@@ -178,21 +148,21 @@ class MaestroService:
 
                 # Launch missing runners
                 launched = 0
-                ephemeral = entry.get("ephemeral", False)
+                ephemeral = entry.get("ephemeral", True)
                 disable_update = entry.get("disable_update", True)
                 for i in range(current_count, desired_count):
                     if self._shutdown:
                         break
 
                     try:
-                        container = mgr.start_runner(
+                        process = mgr.start_runner(
                             index=i + 1,
                             labels=labels,
                             ephemeral=ephemeral,
                             disable_update=disable_update,
                         )
                         logger.info(
-                            f"[{url}] Launched runner container: {container.name}"
+                            f"[{url}] Launched isolated runner process: {process.pid}"
                         )
                         launched += 1
 
@@ -203,7 +173,9 @@ class MaestroService:
                         logger.error(f"[{url}] Failed to launch runner {i + 1}: {e}")
 
                 if launched > 0:
-                    logger.info(f"[{url}] Successfully launched {launched} new runners")
+                    logger.info(
+                        f"[{url}] Successfully launched {launched} new isolated runners"
+                    )
 
             except Exception as e:
                 logger.error(f"[{url}] Error during runner launch: {e}")
@@ -218,66 +190,113 @@ class MaestroService:
             url = entry["url"]
 
             try:
-                containers = mgr.list_runner_containers()
-                running = [c for c in containers if c.status == "running"]
-                exited = [c for c in containers if c.status == "exited"]
+                processes = mgr.list_runner_containers()
+                running = [c for c in processes if c.get("status") == "running"]
+                completed = [c for c in processes if c.get("status") != "running"]
 
                 logger.info(
-                    f"[{url}] Status: {len(running)} running, {len(exited)} exited"
+                    f"[{url}] Status: {len(running)} running, {len(completed)} completed"
                 )
 
-                # Log container details
-                for container in containers:
-                    logger.debug(f"  - {container.name}: {container.status}")
+                for process in processes:
+                    logger.debug(
+                        f"  - {process.get('name', 'unknown')}: {process.get('status')} (pid: {process.get('pid', 'N/A')})"
+                    )
 
-                # Handle crashed containers
-                for container in exited:
-                    try:
-                        exit_code = container.attrs.get("State", {}).get(
-                            "ExitCode", "unknown"
-                        )
-                        logger.warning(
-                            f"[{url}] Container {container.name} exited with code {exit_code}"
-                        )
+                # Completed processes are already cleaned up by subprocess tracking
+                for process in completed:
+                    logger.info(
+                        f"[{url}] Process {process.get('name', 'unknown')} completed"
+                    )
 
-                        # Remove crashed containers
-                        container.remove(force=True)
-                        logger.info(
-                            f"[{url}] Removed crashed container: {container.name}"
-                        )
-
-                    except Exception as e:
-                        logger.error(f"[{url}] Error handling crashed container: {e}")
+                if len(running) == 0:
+                    logger.info(
+                        f"[{url}] No runners running - system appears quiescent, ready for potential docker prune"
+                    )
+                    self._execute_docker_prune_if_safe()
 
             except Exception as e:
                 logger.error(f"[{url}] Error during monitoring: {e}")
 
-    def cleanup_runners(self):
-        """Gracefully cleanup runner containers"""
-        logger.info("Initiating graceful shutdown of runner containers...")
+    def _execute_docker_prune_if_safe(self):
+        import subprocess
+        import time
 
-        cleanup_success = 0
-        cleanup_failed = 0
+        time.sleep(10)  # Wait to ensure all operations are complete
+
+        total_running = 0
+        for entry in self.runner_managers:
+            mgr = entry["manager"]
+            processes = mgr.list_runner_containers()
+            running_processes = [c for c in processes if c.get("status") == "running"]
+            total_running += len(running_processes)
+
+        if total_running == 0:
+            try:
+                logger.info("System quiescent - executing docker system prune...")
+
+                result_df_before = subprocess.run(
+                    ["docker", "system", "df"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+
+                if result_df_before.returncode == 0:
+                    logger.info(
+                        f"Docker system status before prune: {result_df_before.stdout}"
+                    )
+
+                result = subprocess.run(
+                    ["docker", "system", "prune", "-a", "-f", "--volumes"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
+
+                if result.returncode == 0:
+                    logger.info(f"Docker prune successful: {result.stdout}")
+
+                    result_df_after = subprocess.run(
+                        ["docker", "system", "df"],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+
+                    if result_df_after.returncode == 0:
+                        logger.info(
+                            f"Docker system status after prune: {result_df_after.stdout}"
+                        )
+                else:
+                    logger.error(f"Docker prune failed: {result.stderr}")
+
+            except subprocess.TimeoutExpired:
+                logger.error("Docker prune command timed out")
+            except Exception as e:
+                logger.error(f"Error executing docker prune: {e}")
+        else:
+            logger.info(
+                f"Deferring docker prune - {total_running} processes now running"
+            )
+
+    def cleanup_runners(self):
+        """Gracefully cleanup runner processes and containers"""
+        logger.info("Initiating graceful shutdown of runner processes...")
+
+        total_cleaned = 0
 
         for entry in self.runner_managers:
             mgr = entry["manager"]
-            containers = mgr.list_runner_containers()
+            url = entry["url"]
+            try:
+                cleaned = mgr.cleanup_containers()
+                total_cleaned += cleaned
+                logger.info(f"[{url}] Cleaned up {cleaned} runner(s)")
+            except Exception as e:
+                logger.error(f"[{url}] Failed to cleanup runners: {e}")
 
-            for container in containers:
-                try:
-                    logger.info(f"Stopping container: {container.name}")
-                    container.stop(timeout=30)
-                    container.remove(force=True)
-                    cleanup_success += 1
-                    logger.info(f"Successfully cleaned up: {container.name}")
-
-                except Exception as e:
-                    logger.error(f"Failed to cleanup {container.name}: {e}")
-                    cleanup_failed += 1
-
-        logger.info(
-            f"Cleanup completed: {cleanup_success} successful, {cleanup_failed} failed"
-        )
+        logger.info(f"Cleanup completed: {total_cleaned} runner(s) cleaned up")
 
     def run(self):
         """Main service loop"""

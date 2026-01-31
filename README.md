@@ -60,11 +60,13 @@ services:
       # - DEFAULT_RUNNER_TOKEN=YOUR_COMMON_GITHUB_TOKEN
 
       # RUNNERS_MATRIX parameters:
-      #   url:    GitHub repository or organization URL, e.g. "https://github.com/your-org/your-repo1" or "https://github.com/your-org"
-      #   count:  Number of runners (containers) to launch for this url
-      #   labels: Comma-separated labels for the runner(s)
-      #   token:  GitHub Personal Access Token (PAT) with registration permissions
-      #   image:  (optional) Docker image for the runner (with tag); omitted means default "dublok/gh-runner:latest"
+      #   url:            GitHub repository or organization URL, e.g. "https://github.com/your-org/your-repo1" or "https://github.com/your-org"
+      #   count:          Number of runners (containers) to launch for this url
+      #   labels:         Comma-separated labels for the runner(s)
+      #   token:          GitHub Personal Access Token (PAT) with registration permissions
+      #   image:          (optional) Docker image for the runner (with tag); omitted means default "dublok/gh-runner:latest"
+      #   ephemeral:      (optional, default: true) If true, runners terminate after one job and auto-cleanup
+      #   disable_update: (optional, default: true) If true, skip automatic image pulls for faster launches
       - RUNNERS_MATRIX: |
           [
             {"url":"https://github.com/your-org/your-repo1",  "count":3, "labels":"dind,ubuntu-latest", "token":"YOUR_GITHUB_TOKEN_1", "image":"dublok/gh-runner:v1"},
@@ -86,13 +88,15 @@ services:
 
 ## RUNNERS_MATRIX Parameter Reference
 
-| Parameter | Type    | Required | Example                                   | Description                                                                                 |
-|-----------|---------|----------|-------------------------------------------|---------------------------------------------------------------------------------------------|
-| url       | string  | Yes      | "https://github.com/your-org/your-repo1"  | GitHub repository *or* organization URL to register the runner(s) with                      |
-| count     | int     | Yes      | 3                                         | Number of runner containers for this target (>=1)                                           |
-| labels    | string  | Yes      | "dind,ubuntu-latest"                      | Comma-separated labels for the runner(s), visible in Actions matrix/targeted jobs           |
-| token     | string  | Yes*     | "YOUR_GITHUB_TOKEN"                       | GitHub PAT with registration permission; fallback to DEFAULT_RUNNER_TOKEN or GITHUB_PAT     |
-| image     | string  | No       | "dublok/gh-runner:v1.0.11"                | Docker image for runner (with tag/digest); omitted means defaults to dublok/gh-runner:latest|
+| Parameter       | Type    | Required | Default | Example                                   | Description                                                                                 |
+|-----------------|---------|----------|---------|-------------------------------------------|---------------------------------------------------------------------------------------------|
+| url             | string  | Yes      | -       | "https://github.com/your-org/your-repo1"  | GitHub repository *or* organization URL to register the runner(s) with                      |
+| count           | int     | Yes      | -       | 3                                         | Number of runner containers for this target (>=1)                                           |
+| labels          | string  | Yes      | -       | "dind,ubuntu-latest"                      | Comma-separated labels for the runner(s), visible in Actions matrix/targeted jobs           |
+| token           | string  | Yes*     | -       | "YOUR_GITHUB_TOKEN"                       | GitHub PAT with registration permission; fallback to DEFAULT_RUNNER_TOKEN or GITHUB_PAT     |
+| image           | string  | No       | `dublok/gh-runner:latest` | "dublok/gh-runner:v1.0.11" | Docker image for runner (with tag/digest)                                    |
+| ephemeral       | bool    | No       | `true`  | true                                      | If true, runners auto-terminate after one job. Recommended for isolation and auto-cleanup   |
+| disable_update  | bool    | No       | `true`  | true                                      | If true, skips automatic image pulls before container start for faster launches             |
 
 \* `token` is optional if `DEFAULT_RUNNER_TOKEN` is provided (globally), otherwise required per-runner entry.
 
@@ -103,6 +107,48 @@ To register runners at the organization level, simply set `url` to your organiza
 ### Example: Image Tag Versions
 
 You can specify a particular runner image for any entry (`image`). If omitted, your runner will use `dublok/gh-runner:latest` by default.
+
+---
+
+## Runner Isolation & Docker Resource Management
+
+Maestro uses an **isolated runner architecture** for improved reliability and resource management:
+
+### Ephemeral Runner Mode (Default)
+
+By default, runners operate in **ephemeral mode** (`ephemeral: true`):
+
+- ✅ Each runner container automatically terminates after completing one job
+- ✅ Containers are launched with Docker's `--rm` flag for automatic cleanup
+- ✅ No manual container cleanup required
+- ✅ Prevents resource accumulation and stale containers
+
+### Automatic Docker Pruning
+
+When all runners are idle (no jobs running), Maestro automatically:
+
+1. **Detects system quiescence** - waits 10 seconds to ensure stability
+2. **Executes `docker system prune`** - removes:
+   - Stopped containers
+   - Dangling images
+   - Unused volumes
+   - Build cache
+3. **Logs resource cleanup** - shows before/after disk usage
+
+This ensures Docker resources don't accumulate over time, especially important for:
+- Long-running deployments
+- High-volume CI/CD environments
+- Resource-constrained hosts
+
+### Persistent Runner Mode
+
+For special use cases, you can disable ephemeral mode:
+
+```json
+{"url": "...", "count": 2, "labels": "...", "token": "...", "ephemeral": false}
+```
+
+**Note:** Persistent runners don't auto-terminate and won't trigger automatic docker prune.
 
 ---
 
