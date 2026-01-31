@@ -132,8 +132,48 @@ class MaestroService:
                 )
 
                 needed = desired_count - current_count
-                if needed <= 0:
-                    logger.info(f"[{url}] No additional runners needed.")
+
+                # Scale down if we have too many runners
+                if needed < 0:
+                    excess = -needed
+                    logger.info(
+                        f"[{url}] Scaling down: removing {excess} excess runner(s)"
+                    )
+
+                    # Sort by creation time (oldest first) to remove oldest runners
+                    sorted_containers = sorted(
+                        running_containers,
+                        key=lambda c: c.labels.get("maestro.created", "0"),
+                        reverse=False,
+                    )
+
+                    removed = 0
+                    for container in sorted_containers[:excess]:
+                        if self._shutdown:
+                            break
+                        try:
+                            logger.info(
+                                f"[{url}] Stopping excess runner: {container.name}"
+                            )
+                            container.stop(timeout=30)
+                            container.remove(force=True)
+                            logger.info(
+                                f"[{url}] Removed excess runner: {container.name}"
+                            )
+                            removed += 1
+                        except Exception as e:
+                            logger.error(
+                                f"[{url}] Failed to remove runner {container.name}: {e}"
+                            )
+
+                    if removed > 0:
+                        logger.info(
+                            f"[{url}] Successfully removed {removed} excess runner(s)"
+                        )
+                    continue
+
+                if needed == 0:
+                    logger.debug(f"[{url}] Runner count matches target.")
                     continue
 
                 # Launch missing runners
