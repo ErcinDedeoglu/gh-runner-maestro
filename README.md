@@ -48,7 +48,11 @@ docker run -d --name gh-runner-maestro \
   gh-runner-maestro:latest
 ```
 
-Valid values: `host-socket`, `dind`
+Valid values: `host-socket`, `dind`, `standalone`
+
+- `host-socket`: Runners share the host's Docker daemon (socket mounted from host)
+- `dind`: Runners share maestro's internal Docker daemon (default when running privileged)
+- `standalone`: Each runner starts its own Docker daemon (no socket available)
 
 **Features:**
 - ✅ Automatic cgroup v1 configuration for compatibility

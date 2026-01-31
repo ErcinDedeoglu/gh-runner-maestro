@@ -34,11 +34,11 @@ class RunnerManager:
 
     def _detect_docker_mode(self) -> str:
         explicit_mode = os.getenv("DOCKER_MODE", "").lower()
-        if explicit_mode in ("host-socket", "dind"):
+        if explicit_mode in ("host-socket", "dind", "standalone"):
             return explicit_mode
 
         if not os.path.exists("/var/run/docker.sock"):
-            return "dind"
+            return "standalone"
 
         try:
             with open("/proc/mounts", "r") as f:
@@ -84,13 +84,19 @@ class RunnerManager:
             volume_args = []
             deployment_mode = self._detect_docker_mode()
 
-            volume_args.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock:rw"])
-            env_vars.extend(
-                [
-                    "DOCKER_HOST=unix:///var/run/docker.sock",
-                    "SKIP_DOCKER_DAEMON=true",
-                ]
-            )
+            if deployment_mode in ("host-socket", "dind"):
+                volume_args.extend(
+                    ["-v", "/var/run/docker.sock:/var/run/docker.sock:rw"]
+                )
+                env_vars.extend(
+                    [
+                        "DOCKER_HOST=unix:///var/run/docker.sock",
+                        "SKIP_DOCKER_DAEMON=true",
+                    ]
+                )
+            else:
+                volume_args.extend(["-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"])
+
             logger.info(f"Using {deployment_mode} mode for container {runner_name}")
 
             # Build the docker run command with --rm for complete isolation
