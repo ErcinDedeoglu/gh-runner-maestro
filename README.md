@@ -38,6 +38,18 @@ docker run -d --name gh-runner-maestro \
   gh-runner-maestro:latest
 ```
 
+### Explicit Mode Override
+Maestro auto-detects whether the Docker socket is mounted from the host or created by its internal daemon. To force a specific mode, set `DOCKER_MODE`:
+```bash
+docker run -d --name gh-runner-maestro \
+  --privileged \
+  -e DOCKER_MODE=dind \
+  -e RUNNERS_MATRIX='[...]' \
+  gh-runner-maestro:latest
+```
+
+Valid values: `host-socket`, `dind`
+
 **Features:**
 - ✅ Automatic cgroup v1 configuration for compatibility
 - ✅ Clean logs without cgroup errors

@@ -32,6 +32,24 @@ class RunnerManager:
             return f"{parts[-2]}-{parts[-1]}" if len(parts) > 1 else parts[-1]
         return "default-runner"
 
+    def _detect_docker_mode(self) -> str:
+        explicit_mode = os.getenv("DOCKER_MODE", "").lower()
+        if explicit_mode in ("host-socket", "dind"):
+            return explicit_mode
+
+        if not os.path.exists("/var/run/docker.sock"):
+            return "dind"
+
+        try:
+            with open("/proc/mounts", "r") as f:
+                for line in f:
+                    if "/var/run/docker.sock" in line:
+                        return "host-socket"
+        except (IOError, OSError):
+            pass
+
+        return "dind"
+
     def start_runner(
         self,
         index: int,
@@ -63,30 +81,17 @@ class RunnerManager:
                 for key, value in extra_env.items():
                     env_vars.append(f"{key}={value}")
 
-            # Adaptive volume configuration - detect deployment mode
             volume_args = []
-            deployment_mode = "unknown"
+            deployment_mode = self._detect_docker_mode()
 
-            # Check if Docker socket is available on the host
-            if os.path.exists("/var/run/docker.sock"):
-                # Docker socket mode - share the host Docker daemon
-                volume_args.extend(
-                    ["-v", "/var/run/docker.sock:/var/run/docker.sock:rw"]
-                )
-                deployment_mode = "docker-socket"
-                # Tell the runner image to skip starting its own Docker daemon
-                env_vars.extend(
-                    [
-                        "DOCKER_HOST=unix:///var/run/docker.sock",
-                        "SKIP_DOCKER_DAEMON=true",
-                    ]
-                )
-                logger.info(f"Using Docker socket mode for container {runner_name}")
-            else:
-                # True DIND mode - mount cgroup for internal Docker daemon
-                volume_args.extend(["-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"])
-                deployment_mode = "docker-in-docker"
-                logger.info(f"Using Docker-in-Docker mode for container {runner_name}")
+            volume_args.extend(["-v", "/var/run/docker.sock:/var/run/docker.sock:rw"])
+            env_vars.extend(
+                [
+                    "DOCKER_HOST=unix:///var/run/docker.sock",
+                    "SKIP_DOCKER_DAEMON=true",
+                ]
+            )
+            logger.info(f"Using {deployment_mode} mode for container {runner_name}")
 
             # Build the docker run command with --rm for complete isolation
             cmd = [
