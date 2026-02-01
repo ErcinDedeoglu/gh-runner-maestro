@@ -33,22 +33,18 @@ class RunnerManager:
         return "default-runner"
 
     def _detect_docker_mode(self) -> str:
+        """
+        Determine Docker mode for runner containers.
+
+        Default is 'standalone' - each runner gets its own isolated Docker daemon.
+        Can be overridden with DOCKER_MODE env var if shared Docker is needed.
+        """
         explicit_mode = os.getenv("DOCKER_MODE", "").lower()
         if explicit_mode in ("host-socket", "dind", "standalone"):
             return explicit_mode
 
-        if not os.path.exists("/var/run/docker.sock"):
-            return "standalone"
-
-        try:
-            with open("/proc/mounts", "r") as f:
-                for line in f:
-                    if "/var/run/docker.sock" in line:
-                        return "host-socket"
-        except (IOError, OSError):
-            pass
-
-        return "dind"
+        # Default to standalone - runners are fully isolated with their own Docker daemon
+        return "standalone"
 
     def start_runner(
         self,
