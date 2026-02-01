@@ -155,15 +155,13 @@ class MaestroService:
                         break
 
                     try:
-                        process = mgr.start_runner(
+                        runner_name = mgr.start_runner(
                             index=i + 1,
                             labels=labels,
                             ephemeral=ephemeral,
                             disable_update=disable_update,
                         )
-                        logger.info(
-                            f"[{url}] Launched isolated runner process: {process.pid}"
-                        )
+                        logger.info(f"[{url}] Launched runner container: {runner_name}")
                         launched += 1
 
                         # Small delay between launches to prevent overwhelming
