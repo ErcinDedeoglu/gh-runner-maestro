@@ -5,6 +5,7 @@ import signal
 import sys
 import logging
 import json
+import subprocess
 from datetime import datetime, timezone
 from docker_runner import RunnerManager
 from config import load_runner_configs
@@ -219,9 +220,6 @@ class MaestroService:
                 logger.error(f"[{url}] Error during monitoring: {e}")
 
     def _execute_docker_prune_if_safe(self):
-        import subprocess
-        import time
-
         time.sleep(10)  # Wait to ensure all operations are complete
 
         total_running = 0
@@ -298,6 +296,30 @@ class MaestroService:
 
         logger.info(f"Cleanup completed: {total_cleaned} runner(s) cleaned up")
 
+    def _ensure_runner_images_pulled(self):
+        """Pre-pull runner images to avoid parallel pulls during launch"""
+        images_to_pull = set()
+        for entry in self.runner_configs:
+            images_to_pull.add(entry["image"])
+
+        for image in images_to_pull:
+            logger.info(f"Pre-pulling runner image: {image}")
+            try:
+                result = subprocess.run(
+                    ["docker", "pull", image],
+                    capture_output=True,
+                    text=True,
+                    timeout=600,  # 10 minute timeout for large images
+                )
+                if result.returncode == 0:
+                    logger.info(f"Successfully pulled image: {image}")
+                else:
+                    logger.warning(f"Failed to pull image {image}: {result.stderr}")
+            except subprocess.TimeoutExpired:
+                logger.error(f"Timeout pulling image: {image}")
+            except Exception as e:
+                logger.error(f"Error pulling image {image}: {e}")
+
     def run(self):
         """Main service loop"""
         logger.info("Starting Maestro service...")
@@ -308,6 +330,9 @@ class MaestroService:
             if health["status"] != "healthy":
                 logger.error("Initial health check failed, exiting...")
                 return
+
+            # Pre-pull runner images to avoid parallel pulls
+            self._ensure_runner_images_pulled()
 
             # Launch initial runners
             self.launch_runners()
