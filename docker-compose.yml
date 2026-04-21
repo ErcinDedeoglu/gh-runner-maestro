@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   gh-runner-maestro:
     build: src
@@ -11,41 +9,38 @@ services:
     #   Precedence: per-runner "token" > DEFAULT_RUNNER_TOKEN > GITHUB_PAT (legacy).
     #   Example (uncomment and set as needed):
     #   - DEFAULT_RUNNER_TOKEN=YOUR_COMMON_GITHUB_TOKEN
-
     environment:
-      # - DEFAULT_RUNNER_TOKEN=YOUR_COMMON_GITHUB_TOKEN
       # Examples below show both repository-level and organization-level runner configurations.
       # The "image" key is optional: if omitted, dublok/gh-runner:latest will be used by default.
       # RUNNERS_MATRIX parameters:
-            #   url:   The GitHub repository or organization URL. Example: "https://github.com/your-org/your-repo1" or "https://github.com/your-org"
-            #   count: Number of runner containers to launch for this url. Must be a positive integer.
-            #   labels: Comma-separated labels to assign for each runner (for GitHub Actions matrix jobs, self-hosted targeting, etc).
-            #   token: Personal Access Token (PAT) with repository/organization registration permissions.
-            #   image: Docker image (optionally with tag) for the runner container. Optional; if omitted, defaults to "dublok/gh-runner:latest".
-      - RUNNERS_MATRIX: |
-          [
-            {"url":"https://github.com/your-org/defaults-demo1","count":1,"token":"YOUR_GITHUB_TOKEN_3"},
-            {"url":"https://github.com/your-org/defaults-demo2","count":2,"token":"YOUR_GITHUB_TOKEN_4"},
-            {"url":"https://github.com/your-org/your-repo1","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_1","image":"dublok/gh-runner:v1"},
-            {"url":"https://github.com/your-org/your-repo2","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_2","image":"dublok/gh-runner:v1.0.11"},
-            {"url":"https://github.com/your-org","count":2,"labels":"org-scope","token":"YOUR_ORG_LEVEL_GITHUB_TOKEN"},
-            {"url":"https://github.com/your-org/defaults-demo2","count":2,"token":"YOUR_GITHUB_TOKEN_4"},
-            {"url":"https://github.com/your-org/defaults-demo1","token":"YOUR_GITHUB_TOKEN_3"},
-            {"url":"https://github.com/your-org/defaults-demo1"}
-          ]
+      #   url:    The GitHub repository or organization URL. Example: "https://github.com/your-org/your-repo1" or "https://github.com/your-org"
+      #   count:  Number of runner containers to launch for this url. Must be a positive integer.
+      #   labels: Comma-separated labels to assign for each runner (for GitHub Actions matrix jobs, self-hosted targeting, etc).
+      #   token:  Personal Access Token (PAT) with repository/organization registration permissions.
+      #   image:  Docker image (optionally with tag) for the runner container. Optional; if omitted, defaults to "dublok/gh-runner:latest".
+      RUNNERS_MATRIX: |
+        [
+          {"url":"https://github.com/your-org/defaults-demo1","count":1,"token":"YOUR_GITHUB_TOKEN_3"},
+          {"url":"https://github.com/your-org/defaults-demo2","count":2,"token":"YOUR_GITHUB_TOKEN_4"},
+          {"url":"https://github.com/your-org/your-repo1","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_1","image":"dublok/gh-runner:v1"},
+          {"url":"https://github.com/your-org/your-repo2","count":3,"labels":"dind,ubuntu-latest","token":"YOUR_GITHUB_TOKEN_2","image":"dublok/gh-runner:v1.0.11"},
+          {"url":"https://github.com/your-org","count":2,"labels":"org-scope","token":"YOUR_ORG_LEVEL_GITHUB_TOKEN"},
+          {"url":"https://github.com/your-org/defaults-demo2","count":2,"token":"YOUR_GITHUB_TOKEN_4"},
+          {"url":"https://github.com/your-org/defaults-demo1","token":"YOUR_GITHUB_TOKEN_3"},
+          {"url":"https://github.com/your-org/defaults-demo1"}
+        ]
+      DEFAULT_RUNNER_TOKEN: ${DEFAULT_RUNNER_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./logs:/var/log/gh-runner-maestro
-    environment:
-      - DEFAULT_RUNNER_TOKEN=${DEFAULT_RUNNER_TOKEN:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     restart: unless-stopped
 
 networks:
   default:
     driver: bridge
 
-# 
+#
 # This is a template. Replace YOUR_GITHUB_TOKEN_1 and YOUR_GITHUB_TOKEN_2 with actual GitHub personal access tokens for your targets.
 # DO NOT commit your real credentials to source control!
 #
