@@ -465,12 +465,11 @@ openssl                                                                       3.
 packaging                                                                     26.0                                    python                       
 packaging                                                                     26.3                                    python                       
 passwd                                                                        1:4.13+dfsg1-4ubuntu3.2                 deb                          
-perl-base                                                                     5.38.2-3.2ubuntu0.4                     deb                          
 perl-base                                                                     5.38.2-3.2ubuntu0.6                     deb                          
 pip                                                                           24.0                                    python                       
 platformdirs                                                                  4.4.0                                   python                       
 procps                                                                        2:4.0.4-4ubuntu3.3                      deb                          
-python-dotenv                                                                 1.2.3                                   python                       
+python-dotenv                                                                 1.2.4                                   python                       
 python3                                                                       3.12.3-0ubuntu2.1                       deb                          
 python3-minimal                                                               3.12.3-0ubuntu2.1                       deb                          
 python3-pip-whl                                                               24.0+dfsg-1ubuntu1.3                    deb                          
